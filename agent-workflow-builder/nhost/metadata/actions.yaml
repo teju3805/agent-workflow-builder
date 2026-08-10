@@ -1,0 +1,62 @@
+actions:
+  - name: triggerWorkflowRun
+    definition:
+      kind: synchronous
+      handler: '{{NHOST_FUNCTIONS_URL}}/actions/trigger-workflow-run'
+      forward_client_headers: false
+      headers:
+        - name: x-internal-secret
+          value_from_env: INTERNAL_WEBHOOK_SECRET
+    permissions:
+      # exposed to every signed-in user; the handler decides who may actually run
+      - role: user
+    comment: Start a workflow run (membership + role + quota checked in the handler)
+
+  - name: approveStep
+    definition:
+      kind: synchronous
+      handler: '{{NHOST_FUNCTIONS_URL}}/actions/approve-step'
+      forward_client_headers: false
+      headers:
+        - name: x-internal-secret
+          value_from_env: INTERNAL_WEBHOOK_SECRET
+    permissions:
+      - role: user
+    comment: Approve a paused approval_gate step and resume the run
+
+  - name: triggerWebhookRun
+    definition:
+      kind: synchronous
+      handler: '{{NHOST_FUNCTIONS_URL}}/actions/trigger-webhook-run'
+      forward_client_headers: false
+      headers:
+        - name: x-internal-secret
+          value_from_env: INTERNAL_WEBHOOK_SECRET
+    permissions:
+      # public on purpose: this is the inbound endpoint external systems call.
+      # The trigger secret is the credential, and it resolves the org itself.
+      - role: public
+      - role: user
+    comment: Inbound webhook endpoint that starts a run
+
+  - name: getWebhookUrl
+    definition:
+      kind: ''
+      handler: '{{NHOST_FUNCTIONS_URL}}/actions/get-webhook-url'
+      forward_client_headers: false
+      headers:
+        - name: x-internal-secret
+          value_from_env: INTERNAL_WEBHOOK_SECRET
+    permissions:
+      - role: user
+    comment: Reveal a webhook trigger URL to owners only
+
+custom_types:
+  enums: []
+  input_objects: []
+  objects:
+    - name: TriggerWorkflowRunOutput
+    - name: ApproveStepOutput
+    - name: WebhookRunOutput
+    - name: WebhookUrlOutput
+  scalars: []

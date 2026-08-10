@@ -1,0 +1,14 @@
+- name: scheduled_workflow_triggers
+  webhook: '{{NHOST_FUNCTIONS_URL}}/cron/scheduled-runs'
+  schedule: '* * * * *'
+  include_in_metadata: true
+  payload: {}
+  retry_conf:
+    num_retries: 1
+    retry_interval_seconds: 10
+    timeout_seconds: 60
+    tolerance_seconds: 21600
+  headers:
+    - name: x-internal-secret
+      value_from_env: INTERNAL_WEBHOOK_SECRET
+  comment: Every minute, start runs for scheduled triggers that are due

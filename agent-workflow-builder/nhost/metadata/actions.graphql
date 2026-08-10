@@ -1,0 +1,42 @@
+type TriggerWorkflowRunOutput {
+  run_id: uuid!
+  status: String!
+  message: String
+}
+
+type ApproveStepOutput {
+  step_run_id: uuid!
+  run_id: uuid!
+  status: String!
+  message: String
+}
+
+type WebhookRunOutput {
+  run_id: uuid
+  accepted: Boolean!
+  message: String
+}
+
+type WebhookUrlOutput {
+  url: String!
+}
+
+type Mutation {
+  """Starts a run. Verifies membership + role, reserves quota, creates the run."""
+  triggerWorkflowRun(workflow_id: uuid!, input: jsonb): TriggerWorkflowRunOutput
+}
+
+type Mutation {
+  """Clears a paused approval_gate and resumes the run. Re-checks the approver's role."""
+  approveStep(step_run_id: uuid!, decision: String, note: String): ApproveStepOutput
+}
+
+type Mutation {
+  """Inbound endpoint for external systems. Authenticated by the trigger secret only."""
+  triggerWebhookRun(secret: String!, payload: jsonb): WebhookRunOutput
+}
+
+type Query {
+  """Returns the inbound URL for a webhook trigger. Owner-only."""
+  getWebhookUrl(trigger_id: uuid!): WebhookUrlOutput
+}

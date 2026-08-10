@@ -1,0 +1,12 @@
+{
+  "name": "workflow-functions",
+  "private": true,
+  "dependencies": {
+    "cron-parser": "^5.0.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.4.0"
+  }
+}

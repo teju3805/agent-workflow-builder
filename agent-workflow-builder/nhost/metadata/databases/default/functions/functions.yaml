@@ -1,0 +1,12 @@
+# Both are exposed as mutations and left admin-only (no permissions block),
+# so quota can only be moved by the Action handlers, never by a client.
+- function:
+    schema: public
+    name: reserve_org_quota
+  configuration:
+    exposed_as: mutation
+- function:
+    schema: public
+    name: release_org_quota
+  configuration:
+    exposed_as: mutation

@@ -1,6 +1,63 @@
+# Nhost config-as-code. This file configures BOTH the local environment and the
+# cloud project — whatever is pushed to git overwrites the cloud settings, so
+# anything environment-specific goes through `secrets.*` rather than being
+# hardcoded here.
+#
+# Local values live in ./.secrets (gitignored).
+# Cloud values are set in the dashboard: Settings -> Secrets.
+
 [global]
+
+# ---- shared between Hasura and the functions -------------------------------
+[[global.environment]]
+name = 'INTERNAL_WEBHOOK_SECRET'
+value = '{{ secrets.INTERNAL_WEBHOOK_SECRET }}'
+
+# ---- how the functions reach Hasura ----------------------------------------
+[[global.environment]]
+name = 'NHOST_GRAPHQL_URL'
+value = '{{ secrets.NHOST_GRAPHQL_URL }}'
+
+[[global.environment]]
+name = 'NHOST_ADMIN_SECRET'
+value = '{{ secrets.HASURA_GRAPHQL_ADMIN_SECRET }}'
+
+# ---- where Hasura sends Actions and Event Triggers -------------------------
+[[global.environment]]
+name = 'NHOST_FUNCTIONS_URL'
+value = '{{ secrets.NHOST_FUNCTIONS_URL }}'
+
+[[global.environment]]
+name = 'NHOST_FUNCTIONS_URL_RUN_EXECUTOR'
+value = '{{ secrets.NHOST_FUNCTIONS_URL }}/events/run-executor'
+
+[[global.environment]]
+name = 'NHOST_FUNCTIONS_URL_NOTIFY'
+value = '{{ secrets.NHOST_FUNCTIONS_URL }}/events/notify'
+
+[[global.environment]]
+name = 'NHOST_FUNCTIONS_URL_WATCHED_ROW'
+value = '{{ secrets.NHOST_FUNCTIONS_URL }}/events/watched-row'
+
+# ---- LLM -------------------------------------------------------------------
+[[global.environment]]
+name = 'LLM_API_KEY'
+value = '{{ secrets.LLM_API_KEY }}'
+
+[[global.environment]]
+name = 'LLM_API_URL'
+value = 'https://api.groq.com/openai/v1/chat/completions'
+
+[[global.environment]]
+name = 'LLM_MODEL'
+value = 'llama-3.1-8b-instant'
+
+[[global.environment]]
+name = 'SLACK_WEBHOOK_URL'
+value = '{{ secrets.SLACK_WEBHOOK_URL }}'
+
+# ---- Hasura ----------------------------------------------------------------
 [hasura]
-version = 'v2.36.1'
 adminSecret = '{{ secrets.HASURA_GRAPHQL_ADMIN_SECRET }}'
 webhookSecret = '{{ secrets.NHOST_WEBHOOK_SECRET }}'
 
@@ -11,23 +68,24 @@ key = '{{ secrets.HASURA_GRAPHQL_JWT_SECRET }}'
 [hasura.settings]
 corsDomain = ['*']
 enableConsole = true
+devMode = false
 enabledAPIs = ['metadata', 'graphql', 'pgdump', 'config']
 
-[functions]
-[functions.node]
-version = 18
-
+# ---- Auth ------------------------------------------------------------------
 [auth]
-version = '0.25.0'
+
 [auth.redirections]
-clientUrl = 'http://localhost:3000'
-allowedUrls = ['http://localhost:3000']
+# CLIENT_URL is http://localhost:3000 locally and the Vercel URL in the cloud
+clientUrl = '{{ secrets.CLIENT_URL }}'
+allowedUrls = ['{{ secrets.CLIENT_URL }}', 'http://localhost:3000']
+
 [auth.method.emailPassword]
 emailVerificationRequired = false
 
-[postgres]
-version = '14.6-20230925-1'
+[auth.method.anonymous]
+enabled = false
 
-[provider]
-[storage]
-version = '0.4.0'
+# ---- Functions -------------------------------------------------------------
+[functions]
+[functions.node]
+version = 18

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@apollo/client';
-import { useAuthenticationStatus } from '@nhost/nextjs';
+import { useAuthenticationStatus, useUserId } from '@nhost/nextjs';
 import { MY_ORGS } from '@/lib/graphql';
 
 export type OrgRole = 'owner' | 'editor' | 'viewer';
@@ -29,17 +29,25 @@ export const useOrg = () => useContext(Ctx);
 
 export function OrgProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthenticationStatus();
-  const { data, loading } = useQuery(MY_ORGS, { skip: !isAuthenticated });
+  const userId = useUserId();
+  const { data, loading } = useQuery(MY_ORGS, {
+    variables: { userId },
+    skip: !isAuthenticated || !userId,
+    fetchPolicy: 'cache-and-network',
+  });
   const [orgId, setOrgId] = useState<string | null>(null);
 
   const memberships: Membership[] = data?.org_members ?? [];
 
   useEffect(() => {
-    if (!memberships.length) return;
+    if (!memberships.length) {
+      setOrgId(null);
+      return;
+    }
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('orgId') : null;
     const valid = memberships.find((m) => m.org_id === saved);
     setOrgId(valid?.org_id ?? memberships[0].org_id);
-  }, [data]);
+  }, [data, userId]);
 
   const value = useMemo<OrgCtx>(() => {
     const current = memberships.find((m) => m.org_id === orgId) ?? null;

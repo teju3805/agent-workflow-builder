@@ -35,9 +35,12 @@ export const ORG_WORKFLOWS = gql`
   }
 `;
 
+// Filtered to the caller on purpose: org_members is readable by every member
+// of the org, so an unfiltered query returns colleagues' rows too and the app
+// would read somebody else's role as its own.
 export const MY_ORGS = gql`
-  query MyOrgs {
-    org_members(order_by: { created_at: asc }) {
+  query MyOrgs($userId: uuid!) {
+    org_members(where: { user_id: { _eq: $userId } }, order_by: { created_at: asc }) {
       id
       role
       org_id

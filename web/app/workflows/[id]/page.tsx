@@ -55,6 +55,9 @@ export default function WorkflowBuilder({ params }: { params: { id: string } }) 
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // manual runs need the same shape a webhook or a watched row would deliver,
+  // so {{input.payload.subject}} resolves the same way on every trigger path
+  const [ticket, setTicket] = useState('Checkout is down for all customers');
 
   const [save, { loading: saving }] = useMutation(SAVE_WORKFLOW);
   const [trigger, { loading: starting }] = useMutation(TRIGGER_RUN);
@@ -128,7 +131,12 @@ export default function WorkflowBuilder({ params }: { params: { id: string } }) 
   const onRun = async () => {
     setError(null);
     try {
-      const res = await trigger({ variables: { workflowId: params.id, input: {} } });
+      const res = await trigger({
+        variables: {
+          workflowId: params.id,
+          input: { source: 'manual', payload: { subject: ticket } },
+        },
+      });
       const runId = res.data?.triggerWorkflowRun?.run_id;
       if (runId) router.push(`/runs/${runId}`);
     } catch (e: any) {
@@ -161,6 +169,20 @@ export default function WorkflowBuilder({ params }: { params: { id: string } }) 
               )}
             </div>
           </div>
+          {canRun && (
+            <div style={{ marginTop: 14 }}>
+              <label htmlFor="ticket">Ticket text for this run</label>
+              <input
+                id="ticket"
+                value={ticket}
+                onChange={(e) => setTicket(e.target.value)}
+                placeholder="What the customer wrote"
+              />
+              <p className="sub" style={{ marginTop: 6 }}>
+                Sent as the run input, so the first step has something to classify.
+              </p>
+            </div>
+          )}
           {!canEdit && <p className="sub" style={{ marginTop: 10 }}>You are a {role} here — read only.</p>}
           {error && <p className="err sub" style={{ marginTop: 10 }}>{error}</p>}
         </div>

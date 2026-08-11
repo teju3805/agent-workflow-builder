@@ -8,14 +8,17 @@
  * nothing here is protected by row permissions.
  */
 
+// WF_* are our own (nhost reserves the NHOST_ and HASURA_ prefixes for the
+// variables it injects, so user-defined config cannot use them). The NHOST_
+// fallbacks pick up nhost's injected values if the WF_ ones are unset.
 const GRAPHQL_URL =
+  process.env.WF_GRAPHQL_URL ||
   process.env.NHOST_GRAPHQL_URL ||
-  process.env.HASURA_GRAPHQL_URL ||
   'http://localhost:1337/v1/graphql';
 
 const ADMIN_SECRET =
+  process.env.WF_ADMIN_SECRET ||
   process.env.NHOST_ADMIN_SECRET ||
-  process.env.HASURA_GRAPHQL_ADMIN_SECRET ||
   'nhost-admin-secret';
 
 export class GqlError extends Error {

@@ -307,7 +307,7 @@
         num_retries: 2
         interval_sec: 10
         timeout_sec: 120
-      webhook_from_env: NHOST_FUNCTIONS_URL_RUN_EXECUTOR
+      webhook_from_env: WF_EVENT_RUN_EXECUTOR_URL
       headers:
         - name: x-internal-secret
           value_from_env: INTERNAL_WEBHOOK_SECRET
@@ -382,7 +382,7 @@
         num_retries: 3
         interval_sec: 10
         timeout_sec: 60
-      webhook_from_env: NHOST_FUNCTIONS_URL_NOTIFY
+      webhook_from_env: WF_EVENT_NOTIFY_URL
       headers:
         - name: x-internal-secret
           value_from_env: INTERNAL_WEBHOOK_SECRET
@@ -426,7 +426,7 @@
         num_retries: 2
         interval_sec: 10
         timeout_sec: 60
-      webhook_from_env: NHOST_FUNCTIONS_URL_WATCHED_ROW
+      webhook_from_env: WF_EVENT_WATCHED_ROW_URL
       headers:
         - name: x-internal-secret
           value_from_env: INTERNAL_WEBHOOK_SECRET

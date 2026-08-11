@@ -5,6 +5,11 @@
 #
 # Local values live in ./.secrets (gitignored).
 # Cloud values are set in the dashboard: Settings -> Secrets.
+#
+# NOTE: nhost reserves the NHOST_ and HASURA_ prefixes for the variables it
+# injects itself, so user-defined variables below use the WF_ prefix. Secret
+# *names* are not restricted, which is why WF_GRAPHQL_URL can read the
+# existing NHOST_GRAPHQL_URL secret.
 
 [global]
 
@@ -15,29 +20,27 @@ value = '{{ secrets.INTERNAL_WEBHOOK_SECRET }}'
 
 # ---- how the functions reach Hasura ----------------------------------------
 [[global.environment]]
-name = 'NHOST_GRAPHQL_URL'
+name = 'WF_GRAPHQL_URL'
 value = '{{ secrets.NHOST_GRAPHQL_URL }}'
 
 [[global.environment]]
-name = 'NHOST_ADMIN_SECRET'
+name = 'WF_ADMIN_SECRET'
 value = '{{ secrets.HASURA_GRAPHQL_ADMIN_SECRET }}'
 
-# ---- where Hasura sends Actions and Event Triggers -------------------------
+# ---- where Hasura sends Event Triggers -------------------------------------
+# Full URLs, one secret each: a wrong value here does not fail validation, it
+# just makes runs hang at `pending`, so they are kept explicit.
 [[global.environment]]
-name = 'NHOST_FUNCTIONS_URL'
-value = '{{ secrets.NHOST_FUNCTIONS_URL }}'
+name = 'WF_EVENT_RUN_EXECUTOR_URL'
+value = '{{ secrets.WF_EVENT_RUN_EXECUTOR_URL }}'
 
 [[global.environment]]
-name = 'NHOST_FUNCTIONS_URL_RUN_EXECUTOR'
-value = '{{ secrets.NHOST_FUNCTIONS_URL }}/events/run-executor'
+name = 'WF_EVENT_NOTIFY_URL'
+value = '{{ secrets.WF_EVENT_NOTIFY_URL }}'
 
 [[global.environment]]
-name = 'NHOST_FUNCTIONS_URL_NOTIFY'
-value = '{{ secrets.NHOST_FUNCTIONS_URL }}/events/notify'
-
-[[global.environment]]
-name = 'NHOST_FUNCTIONS_URL_WATCHED_ROW'
-value = '{{ secrets.NHOST_FUNCTIONS_URL }}/events/watched-row'
+name = 'WF_EVENT_WATCHED_ROW_URL'
+value = '{{ secrets.WF_EVENT_WATCHED_ROW_URL }}'
 
 # ---- LLM -------------------------------------------------------------------
 [[global.environment]]
@@ -66,10 +69,11 @@ type = 'HS256'
 key = '{{ secrets.HASURA_GRAPHQL_JWT_SECRET }}'
 
 [hasura.settings]
-corsDomain = ['*']
 enableConsole = true
 devMode = false
-enabledAPIs = ['metadata', 'graphql', 'pgdump', 'config']
+# quota functions must never be callable by a client role, so nothing is
+# inferred from the returning table's select permission
+inferFunctionPermissions = false
 
 # ---- Auth ------------------------------------------------------------------
 [auth]
@@ -82,10 +86,7 @@ allowedUrls = ['{{ secrets.CLIENT_URL }}', 'http://localhost:3000']
 [auth.method.emailPassword]
 emailVerificationRequired = false
 
-[auth.method.anonymous]
-enabled = false
-
 # ---- Functions -------------------------------------------------------------
 [functions]
 [functions.node]
-version = 18
+version = 20

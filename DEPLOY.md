@@ -1,20 +1,12 @@
 # Deploying
 
-Backend first — the frontend needs the nhost subdomain, and nhost needs the Vercel URL,
-so the order below breaks that loop with one extra push at the end.
+Backend first — the frontend needs the nhost subdomain, and nhost needs the Vercel URL, so
+the order below breaks that loop with one extra push at the end.
 
 ## 1. nhost Cloud project
 
-app.nhost.io → **New Project** → free plan, pick a region (`ap-south-1` if you're in
-India). Then **Settings → Git** → connect the GitHub repo, branch `main`, base
-directory `/`.
-
-nhost reads `nhost/nhost.toml`, applies `nhost/migrations`, applies `nhost/metadata`, and
-builds `functions/` on every push to `main`. **Whatever is in the repo overwrites the
-cloud settings** — so don't edit config in the dashboard and expect it to survive; edit
-`nhost.toml` and push.
-
-Note the **subdomain** and **region** from the project overview. Your URLs are:
+app.nhost.io → **New Project** → free plan, pick a region. Note the **subdomain** and
+**region**; your URLs are:
 
 ```
 GraphQL    https://<subdomain>.hasura.<region>.nhost.run/v1/graphql
@@ -22,41 +14,60 @@ Auth       https://<subdomain>.auth.<region>.nhost.run/v1
 Functions  https://<subdomain>.functions.<region>.nhost.run/v1
 ```
 
+Do **not** connect the repo yet — the first deploy resolves `{{ secrets.* }}` and fails if
+they are missing.
+
 ## 2. Secrets (Settings → Secrets)
 
-Config references these by name; the values never live in git.
+nhost pre-creates some of these; leave any that already exist alone.
 
 | Name | Value |
 |---|---|
 | `HASURA_GRAPHQL_ADMIN_SECRET` | long random string |
-| `HASURA_GRAPHQL_JWT_SECRET` | 64+ random hex chars |
+| `HASURA_GRAPHQL_JWT_SECRET` | 64 random hex chars |
 | `NHOST_WEBHOOK_SECRET` | long random string |
-| `INTERNAL_WEBHOOK_SECRET` | long random string |
+| `GRAFANA_ADMIN_PASSWORD` | long random string |
+| `INTERNAL_WEBHOOK_SECRET` | long random string — shared by Hasura and the functions |
 | `NHOST_GRAPHQL_URL` | `https://<subdomain>.hasura.<region>.nhost.run/v1/graphql` |
-| `NHOST_FUNCTIONS_URL` | `https://<subdomain>.functions.<region>.nhost.run/v1` |
+| `WF_EVENT_RUN_EXECUTOR_URL` | `https://<subdomain>.functions.<region>.nhost.run/v1/events/run-executor` |
+| `WF_EVENT_NOTIFY_URL` | `https://<subdomain>.functions.<region>.nhost.run/v1/events/notify` |
+| `WF_EVENT_WATCHED_ROW_URL` | `https://<subdomain>.functions.<region>.nhost.run/v1/events/watched-row` |
 | `CLIENT_URL` | `http://localhost:3000` for now — replaced in step 5 |
-| `LLM_API_KEY` | Groq key, or empty for the disclosed stub |
-| `SLACK_WEBHOOK_URL` | empty is fine |
+| `LLM_API_KEY` | Groq key, or a single space for the stub |
+| `SLACK_WEBHOOK_URL` | a single space is fine |
 
-`NHOST_FUNCTIONS_URL` is the one that silently breaks everything: the three Event Trigger
-URLs are built from it, and the event trigger on `workflow_runs` is what actually executes
-every run. Wrong value → runs sit at `pending` forever with no error anywhere.
+`WF_EVENT_RUN_EXECUTOR_URL` is the one that silently breaks everything: the Event Trigger
+on `workflow_runs` is what actually executes every run, so a wrong value here leaves runs
+at `pending` with no error in any log. Copy-paste it; don't type it.
 
-Sanity check after the first deploy:
+## 3. Connect the repo
+
+Settings → **Deployments** → **Connect to GitHub**. Repository, branch `main`, base
+directory `./` (the base directory is the *parent* of the `nhost` folder). Turn
+**Automatic Deploys** on and save.
+
+If no deployment starts, force one: `git commit --allow-empty -m "Deploy" && git push`.
+
+The deploy runs: project config → migrations → metadata → functions. Config is validated
+against nhost's CUE schema and is strict — see "Config gotchas" below.
+
+Verify when it goes green:
 
 ```bash
 curl -i https://<subdomain>.functions.<region>.nhost.run/v1/events/run-executor
 ```
 
 **401** is correct — the function is live and rejecting an unsigned caller. **404** means
-the URL is wrong.
+the functions did not build.
 
-## 3. Vercel
+Then check **Database → Table Editor** for the eleven tables, and the Hasura console's
+**Settings → Metadata Status** for inconsistencies.
+
+## 4. Vercel
 
 vercel.com → **Add New → Project** → import the repo.
 
-- **Root Directory: `web`** ← the setting people miss; without it the build fails
-- Framework preset: Next.js (auto-detected)
+- **Root Directory: `web`** ← without it the build fails; the repo root has no package.json
 - Environment variables:
 
 ```
@@ -64,43 +75,41 @@ NEXT_PUBLIC_NHOST_SUBDOMAIN = <subdomain>
 NEXT_PUBLIC_NHOST_REGION    = <region>
 ```
 
-Deploy. That URL is what you submit.
+Deploy, then take the **production** domain (the short one under Domains, not the
+per-deployment URL, which changes on every push).
 
-## 4. Point the backend at the frontend
+## 5. Point the backend at the frontend
 
-Update the `CLIENT_URL` secret in the nhost dashboard to the Vercel URL, then redeploy the
-backend (Deployments → redeploy, or push any commit). Until this is done, sign-up works
-but the session is refused — auth only issues tokens to allowed origins.
+Update the `CLIENT_URL` secret to the Vercel URL (no trailing slash) and redeploy the
+backend. Until this is done, sign-up succeeds but no session is issued — auth only accepts
+known origins.
 
-## 5. Seed
+## 6. Seed
 
-On the deployed app, sign up all four users: `owner-a@example.com`, `editor-a@`,
-`viewer-a@`, `owner-b@`. They'll all land on "No organization yet" — correct, they're not
-members of anything yet.
+Sign up the four demo users on the live app **first** — they will all show "No organization
+yet", which is correct. Then dashboard → **Database → SQL Editor**, paste `scripts/seed.sql`,
+run. It prints the webhook secret; keep it for the demo.
 
-Then dashboard → **Database → SQL Editor**, paste `scripts/seed.sql`, run. It prints the
-webhook secret; keep it for the demo. Reload as `owner-a@` and Support triage is there.
+## Config gotchas
 
-## 6. Verify before recording
+All of these fail the **Project Config** step with a CUE validation error naming the field:
 
-```bash
-node scripts/isolation-check.mjs \
-  --backend https://<subdomain>.<region>.nhost.run \
-  --email owner-b@example.com --password '<password>' \
-  --workflow <org-A-workflow-id> --run <org-A-run-id> --step-run <org-A-step-run-id>
-```
+- `jwtSecrets` is an array of tables: `[[hasura.jwtSecrets]]`, not `[hasura.jwtSecrets]`.
+- Global environment variable names may not start with `NHOST_` or `HASURA_` — reserved for
+  nhost's own injected variables. Secret names are unrestricted.
+- `postgres.resources.storage.capacity` and `observability.grafana.adminPassword` have no
+  defaults and must be set explicitly. Capacity can grow but never shrink.
+- Don't pin `functions.node.version` — the allowed set moves, and the default is fine.
 
-On nhost Cloud, auth and GraphQL are on different hostnames than the local single port —
-edit the `AUTH` and `GQL` constants at the top of the script to the two URLs from step 1
-before running it.
+Two more that fail later, in **Migrations And Metadata**:
 
-Also check by hand: manual run finishes, webhook curl starts a run, the approval gate
-pauses and resumes, and an Org A run URL opened as `owner-b@` says "Not found".
+- `nhost/config.yaml` must exist (Hasura CLI config, separate from `nhost.toml`).
+- Empty metadata stub files are worse than absent ones: `network.yaml` containing `[]` is
+  rejected because Hasura expects a mapping. This repo omits the empty stubs entirely.
 
 ## Free-tier notes
 
-- nhost free projects sleep after inactivity — open the dashboard a few minutes before
-  recording so the first request isn't a cold start that looks like a hang.
-- The cron trigger fires every minute; that's fine on free tier but it does count runs
-  against the org quota if a scheduled trigger is attached. Leave scheduled triggers off
-  the demo workflow unless you're showing them.
+- Free projects sleep after inactivity — open the dashboard a few minutes before recording
+  so the first request isn't a cold start that looks like a hang.
+- The cron trigger runs every minute. Scheduled triggers consume org quota, so leave them
+  off the demo workflow unless you're showing them.

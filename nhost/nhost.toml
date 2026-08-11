@@ -61,7 +61,7 @@ value = '{{ secrets.SLACK_WEBHOOK_URL }}'
 adminSecret = '{{ secrets.HASURA_GRAPHQL_ADMIN_SECRET }}'
 webhookSecret = '{{ secrets.NHOST_WEBHOOK_SECRET }}'
 
-[hasura.jwtSecrets]
+[[hasura.jwtSecrets]]
 type = 'HS256'
 key = '{{ secrets.HASURA_GRAPHQL_JWT_SECRET }}'
 

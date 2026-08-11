@@ -90,3 +90,17 @@ emailVerificationRequired = false
 [functions]
 [functions.node]
 version = 20
+
+# ---- Postgres --------------------------------------------------------------
+# capacity has no default in nhost's schema, so it must be stated explicitly.
+# Must match (or exceed) what the project already has provisioned — check
+# Settings -> Database in the dashboard if a deploy complains.
+[postgres]
+[postgres.resources.storage]
+capacity = 1
+
+# ---- Observability ---------------------------------------------------------
+# Also has no default; nhost pre-creates the GRAFANA_ADMIN_PASSWORD secret.
+[observability]
+[observability.grafana]
+adminPassword = '{{ secrets.GRAFANA_ADMIN_PASSWORD }}'

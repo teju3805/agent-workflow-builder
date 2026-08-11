@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   ApolloClient,
   ApolloProvider,
@@ -84,6 +84,24 @@ function makeClient() {
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const client = useMemo(makeClient, []);
+
+  // The cache is keyed by row id, not by who fetched it, so without this a
+  // signed-out user's rows stay readable to whoever signs in next on the same
+  // browser — the org and role would render from stale data even though every
+  // server response is correctly scoped. Wipe on any auth transition.
+  useEffect(() => {
+    const unsubscribe = nhost.auth.onAuthStateChanged((event) => {
+      if (event === 'SIGNED_OUT') {
+        client.clearStore().catch(() => {});
+      } else {
+        // refetch everything active against the new session
+        client.resetStore().catch(() => {});
+      }
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [client]);
 
   return (
     <NhostProvider nhost={nhost}>

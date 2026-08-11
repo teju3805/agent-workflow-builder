@@ -87,9 +87,8 @@ allowedUrls = ['{{ secrets.CLIENT_URL }}', 'http://localhost:3000']
 emailVerificationRequired = false
 
 # ---- Functions -------------------------------------------------------------
-[functions]
-[functions.node]
-version = 20
+# node version deliberately not pinned: nhost defaults it, and pinning it is a
+# field that can (and did) start failing validation when their schema moves.
 
 # ---- Postgres --------------------------------------------------------------
 # capacity has no default in nhost's schema, so it must be stated explicitly.

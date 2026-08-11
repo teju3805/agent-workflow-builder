@@ -1,0 +1,10 @@
+# Hasura CLI config. This is what `hasura migrate apply` / `hasura metadata apply`
+# look for when they run from the nhost/ directory — separate from nhost.toml,
+# which configures the platform itself.
+version: 3
+endpoint: http://localhost:8080
+metadata_directory: metadata
+migrations_directory: migrations
+actions:
+  kind: synchronous
+  handler_webhook_baseurl: http://localhost:3000
